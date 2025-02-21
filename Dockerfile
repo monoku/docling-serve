@@ -1,37 +1,44 @@
-FROM python:3.12
+# Usa Python 3.12 como base
+FROM python:3.12-slim
 
-# Set environment variables
+# Evita la generación de archivos .pyc y usa salida no bloqueante
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     UV_HTTP_TIMEOUT=1200 \
     DOCLING_SERVE_ENABLE_UI=true \
-    PORT=5001
+    PORT=8000
 
-# Set build arguments with defaults
+# Define argumentos de compilación
 ARG UV_SYNC_EXTRA_ARGS="--no-extra cpu"
 
-# Install system dependencies from os-packages.txt
-# COPY os-packages.txt /tmp/
+# Instala dependencias del sistema necesarias (descomentar si es necesario)
 # RUN apt-get update && \
-#     xargs -a /tmp/os-packages.txt apt-get install -y --no-install-recommends && \
-#     rm -rf /var/lib/apt/lists/* && \
-#     rm /tmp/os-packages.txt
+#     apt-get install -y --no-install-recommends \
+#     curl && \
+#     rm -rf /var/lib/apt/lists/*
 
-# Install uv for Python package management
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+# Instala `uv` para la gestión de paquetes
+RUN curl -fsSL https://astral.sh/uv/install.sh | sh
 
-# Create and set working directory
+# Crea y establece el directorio de trabajo
 WORKDIR /app
 
-# Copy project files
+# Copia archivos de dependencias primero para aprovechar la caché de Docker
 COPY pyproject.toml README.md ./
+
+# Instala dependencias de Python
+RUN pip install --no-cache-dir .
+
+# Copia el código de la aplicación
 COPY docling_serve ./docling_serve/
 
-# Install Python dependencies with pip
-# Note: Some packages might need to be pinned to specific versions for Python 3.12 compatibility
-RUN pip install .
+# Crea un usuario sin privilegios para ejecutar el contenedor
+RUN groupadd -r appgroup && useradd -r -g appgroup appuser
+USER appuser
 
+# Expone el puerto correcto
 EXPOSE 8000
-# Set the entrypoint to run the service
-CMD ["python", "runpod_handler.py"]
+
+# Usa ENTRYPOINT para mayor flexibilidad
+ENTRYPOINT ["python", "docling_serve/runpod_handler.py"]
