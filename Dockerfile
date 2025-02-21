@@ -32,5 +32,6 @@ COPY docling_serve ./docling_serve/
 # Note: Some packages might need to be pinned to specific versions for Python 3.12 compatibility
 RUN pip install .
 
+EXPOSE 8000
 # Set the entrypoint to run the service
-ENTRYPOINT ["docling-serve", "run", "--host", "0.0.0.0", "--port", "5001"]
+CMD ["python", "runpod_handler.py"]
